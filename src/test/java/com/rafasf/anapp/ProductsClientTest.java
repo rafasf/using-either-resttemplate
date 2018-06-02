@@ -1,10 +1,12 @@
 package com.rafasf.anapp;
 
+import io.vavr.control.Either;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -33,8 +35,37 @@ public class ProductsClientTest {
     given(restTemplate.getForEntity("//products", Product[].class))
       .willReturn(new ResponseEntity<>(new Product[]{}, HttpStatus.OK));
 
-    List<Product> allProducts = this.products.allProducts();
+    Either<AnError, List<Product>> possiblyAllProducts = this.products.allProducts();
 
-    assertThat(allProducts, is(equalTo(List.of())));
+    assertThat(possiblyAllProducts.isRight(), is(true));
+    assertThat(possiblyAllProducts.get(), is(equalTo(List.of())));
+  }
+
+  @Test
+  public void returnsAnErrorWhen4xx() {
+    given(restTemplate.getForEntity("//products", Product[].class))
+      .willThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST, "ops"));
+
+    Either<AnError, List<Product>> possiblyAllProducts = this.products.allProducts();
+
+    assertThat(possiblyAllProducts.isLeft(), is(true));
+    assertThat(
+      possiblyAllProducts.getLeft(),
+      is(equalTo(new AnError(HttpStatus.BAD_REQUEST, "400 ops"))));
+  }
+
+  @Test
+  public void returnsAnErrorWhen5xx() {
+    given(restTemplate.getForEntity("//products", Product[].class))
+      .willThrow(new HttpClientErrorException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "ops"));
+
+    Either<AnError, List<Product>> possiblyAllProducts = this.products.allProducts();
+
+    assertThat(possiblyAllProducts.isLeft(), is(true));
+    assertThat(
+      possiblyAllProducts.getLeft(),
+      is(equalTo(new AnError(HttpStatus.INTERNAL_SERVER_ERROR, "500 ops"))));
   }
 }

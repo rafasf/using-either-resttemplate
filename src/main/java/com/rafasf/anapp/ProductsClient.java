@@ -1,10 +1,11 @@
 package com.rafasf.anapp;
 
+import io.vavr.control.Either;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
-import static java.util.Arrays.asList;
+import static com.rafasf.anapp.ClientRequest.clientRequest;
 
 public class ProductsClient {
   private RestTemplate restTemplate;
@@ -13,11 +14,9 @@ public class ProductsClient {
     this.restTemplate = restTemplate;
   }
 
-  public List<Product> allProducts() {
-    var response = restTemplate
-      .getForEntity("//products", Product[].class);
-    return response.getStatusCode().is2xxSuccessful()
-      ? asList(response.getBody())
-      : List.of();
+  public Either<AnError, List<Product>> allProducts() {
+    return clientRequest(() -> List.of(restTemplate
+      .getForEntity("//products", Product[].class)
+      .getBody()));
   }
 }
